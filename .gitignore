@@ -23,6 +23,9 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+tensorboard/
+*.gz
+kernel_images
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
