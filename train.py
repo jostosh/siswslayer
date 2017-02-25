@@ -11,29 +11,22 @@ Links:
     [MNIST Dataset] http://yann.lecun.com/exdb/mnist/
 
 """
-
-from __future__ import division, print_function, absolute_import
-
 import tflearn
+from tflearn.layers.normalization import local_response_normalization
 from tflearn.layers.core import input_data, dropout, fully_connected
 from tflearn.layers.conv import max_pool_2d
 from tflearn.layers.estimator import regression
-
 import tensorflow as tf
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
-
 from sisws import spatial_weight_sharing
-
 import os
 import numpy as np
-
 import scipy.misc
-# Data loading and preprocessing
 import tflearn.datasets.mnist as mnist
 from tensorflow.python.platform import tf_logging as logging
-
 import argparse
+
 
 logging.set_verbosity(logging.ERROR)                            # Here we suppress tflearn warnings
 project_folder = os.path.dirname(os.path.realpath(__file__))
@@ -43,8 +36,7 @@ def main(args):
     X_train, Y_train, X_test, Y_test = prepare_data()
     n_centroids = args.centroid_grid if not args.n_centroids else args.n_centroids
     # Building convolutional network
-    network, sws_layer = build_cnn(args, n_centroids)# Training
-
+    network, sws_layer = build_cnn(args, n_centroids)
     # Create a kernel summary that will be the default visualization of the locally weighted kernels of the spatial
     # weight sharing layer
     visual_summary = sws_layer.visual_summary
@@ -63,6 +55,7 @@ def main(args):
 
 
 def save_kernel_figs(model, sws_layer, weighted_filters):
+    os.makedirs(os.path.join(project_folder, 'kernel_images'), exist_ok=True)
     Ws = model.session.run(sws_layer.W_list)
     for i in range(weighted_filters.shape[0]):
         scipy.misc.imsave(os.path.join(project_folder, 'kernel_images', 'weighted_filters{0}.png'.format(i)),
@@ -100,7 +93,7 @@ def sws_visualization(args, kernel_summ, model, n_centroids, visual_summary):
 
 def create_legend(colors, n_centroids):
     patches = [mpatches.Patch(color=c, label='Centroid {}'.format(i)) for i, c in enumerate(colors)]
-    fig = plt.figure(figsize=(6, 6))
+    fig = plt.figure(figsize=(3, 3))
     fig.legend(handles=patches, labels=['Centroid {}'.format(i) for i in range(n_centroids)])
     plt.savefig('tmp.png')
     plot_image = scipy.misc.imread('tmp.png', mode='RGB')
@@ -115,21 +108,20 @@ def build_cnn(args, n_centroids):
                                      strides=1, activation=tf.nn.relu, centroids_trainable=args.centroids_trainable,
                                      scaling=1., per_feature=True, color_coding=args.color_coding)
     sws_layer = network
+    network = local_response_normalization(network)
     network = max_pool_2d(network, 2)
     network = spatial_weight_sharing(incoming=network, n_centroids=n_centroids, n_filters=n_filters[1], filter_size=3,
                                      strides=1, activation=tf.nn.relu, scaling=1, local_normalization=True,
                                      sigma_trainable=True, per_feature=True)
+    network = max_pool_2d(network, 2)
+    network = local_response_normalization(network)
     network = fully_connected(network, 128, activation='relu')
-    network = dropout(network, 0.5)
-    network = fully_connected(network, 128, activation='relu')
-    network = dropout(network, 0.5)
+    network = dropout(network, 0.8)
+    network = fully_connected(network, 256, activation='relu')
+    network = dropout(network, 0.8)
     network = fully_connected(network, 10, activation='softmax')
     network = regression(network, optimizer='adam', learning_rate=0.01,
                          loss='categorical_crossentropy', name='target')
-    col = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
-    for x in col:
-        tf.add_to_collection(tf.GraphKeys.VARIABLES, x)
-
     return network, sws_layer
 
 
@@ -153,7 +145,7 @@ if __name__ == "__main__":
     parser.add_argument("--centroids_trainable", dest='centroids_trainable', default=False,
                         help='If given, the centroid positions will be trainable parameters')
     parser.add_argument("--log_verbosity", type=int, default=0)
-    parser.add_argument("--n_filters", nargs='+', type=int, default=[32, 64])
+    parser.add_argument("--n_filters", nargs='+', type=int, default=[24, 48])
     args = parser.parse_args()
 
     if args.color_coding:

@@ -144,8 +144,9 @@ def spatial_weight_sharing(incoming, n_centroids, n_filters, filter_size, stride
             out = activation(tf.reduce_sum(dist_weighted, axis=4), name='Output')
 
             # Set the variables
-            out.W = [convs.W]
-            out.b = tf.concat(0, [convs.b] + ([centroids_x, centroids_y] if centroids_trainable else []) +
+            out.W = convs.W
+            out.b = tf.concat(0, [convs.b] +
+                              ([centroids_x, centroids_y] if centroids_trainable else []) +
                               ([cov11, cov12, cov21, cov22] if sigma_trainable else []),
                               name='b_concatAndCentroids')
 
@@ -234,7 +235,7 @@ def build_visualization(centroids_f, color_coding, conv_layer, n_centroids, n_fi
 def color_augmentation(current_filter_shape, locally_weighted_kernels, n_centroids, n_filters, per_feature,
                        similarities):
     import colorlover as cl
-    # Add color coding in such that each centroid codes for a certain color.
+    # Add color coding such that each centroid codes for a certain color.
     colors_numeric = [
         list(c) for c in cl.to_numeric(cl.scales['9']['qual']['Set1'])[:n_centroids]
     ]
@@ -249,11 +250,11 @@ def color_augmentation(current_filter_shape, locally_weighted_kernels, n_centroi
     colored_distances = similarities * colors * max_mask
     color_val = tf.reduce_max(colored_distances, axis=[2, 4, 5], keep_dims=True)
     # Now we can compute
-    color_distance = tf.clip_by_value(
+    color_aug = tf.clip_by_value(
         tf.tile(
-            tf.reduce_sum(colored_distances / color_val, axis=6),
+            tf.reduce_sum(colored_distances, axis=6),
             current_filter_shape[:-1] + [1 if per_feature else n_filters, 1, 1]), 0., 0.999)
-    locally_weighted_kernels = tf.concat(2, [color_distance, locally_weighted_kernels])
+    locally_weighted_kernels = tf.concat(2, [color_aug, locally_weighted_kernels])
     current_filter_shape[2] = 4
     return locally_weighted_kernels
 
