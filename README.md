@@ -42,6 +42,7 @@ centroid, allowing the features to be significantly more complex with
 relatively few extra parameters. Put mathematically, we define the
 output of a spatial weight sharing layer as follows:
 <img src="https://latex.codecogs.com/gif.latex?$$\mathsf{Y}&space;=&space;f\left(&space;\sum_{s=0}^{S-1}&space;\bigg(\mathsf&space;W_s&space;\ast&space;\mathsf&space;X&space;\oplus&space;\boldsymbol&space;b_s\bigg)&space;\odot&space;\mathsf&space;S_s&space;\right),$$" title="$$\mathsf{Y} = f\left( \sum_{s=0}^{S-1} \bigg(\mathsf W_s \ast \mathsf X \oplus \boldsymbol b_s\bigg) \odot \mathsf S_s \right),$$" /> 
+
 where <img src="https://latex.codecogs.com/gif.latex?$\mathsf&space;Y$" title="$\mathsf Y$" />
  is the output tensor, 
  <img src="https://latex.codecogs.com/gif.latex?$f(\cdot)$" title="$f(\cdot)$" />, 
@@ -53,8 +54,13 @@ where <img src="https://latex.codecogs.com/gif.latex?$\mathsf&space;Y$" title="$
  <img src="https://latex.codecogs.com/gif.latex?$\mathsf&space;S_{b,i,j,c}&space;=&space;\mathcal&space;S(i,j,i_s,j_s)$" title="$\mathsf S_{b,i,j,c} = \mathcal S(i,j,i_s,j_s)$" />
  where <img src="https://latex.codecogs.com/gif.latex?$(i_s,&space;j_s)$" title="$(i_s, j_s)$" />
 parameterizes the centroid of the $s$-th shared convolution. Note that
-$\oplus$ and $\odot$ denote element-wise operations with optional
-broadcasting along singleton dimensions. The function $\mathcal S$ gives
+<img src="https://latex.codecogs.com/gif.latex?$\oplus$" title="$\oplus$" />
+and 
+<img src="https://latex.codecogs.com/gif.latex?$\odot$" title="$\odot$" />
+denote element-wise operations with optional
+broadcasting along singleton dimensions. The function 
+ <img src="https://latex.codecogs.com/gif.latex?$\mathcal&space;S$" title="$\mathcal S$" />
+ gives
 the ‘similarity’ of a spatial cell located at <img src="https://latex.codecogs.com/gif.latex?$(\cdot,i,j,\cdot)$" title="$(\cdot,i,j,\cdot)$" /> 
 with
 respect to some convolution’s centroid <img src="https://latex.codecogs.com/gif.latex?$(i_s,&space;j_s)$" title="$(i_s, j_s)$" />. 
