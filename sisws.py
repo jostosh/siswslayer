@@ -81,6 +81,13 @@ def spatial_weight_sharing(incoming, n_centroids, n_filters, filter_size, stride
             if isinstance(n_centroids, list):
                 # In case n_centroids is a list, we initialize the centroids in a grid
                 assert len(n_centroids) == 2, "Length of n_centroids list must be 2."
+
+                # If we initialize the centroids in a grid and take them to be non-trainable, it does not make sense to
+                # have feature-wise KCPs
+                if not centroids_trainable:
+                    centroids_f = 1
+                    per_feature = False
+
                 start_x, end_x = scaling / (1 + n_centroids[1]), scaling - scaling / (1 + n_centroids[1])
                 start_y, end_y = scaling / (1 + n_centroids[0]), scaling - scaling / (1 + n_centroids[0])
 
@@ -88,9 +95,9 @@ def spatial_weight_sharing(incoming, n_centroids, n_filters, filter_size, stride
                                      tf.linspace(start_y, end_y, n_centroids[0]))
 
                 centroids_x = tf.Variable(tf.reshape(tf.tile(
-                    tf.reshape(x_, [1, np.prod(n_centroids)]), [centroids_f, 1]), [-1]))
+                    tf.reshape(x_, [1, np.prod(n_centroids)]), [centroids_f, 1]), [-1]), trainable=centroids_trainable)
                 centroids_y = tf.Variable(tf.reshape(tf.tile(
-                    tf.reshape(y_, [1, np.prod(n_centroids)]), [centroids_f, 1]), [-1]))
+                    tf.reshape(y_, [1, np.prod(n_centroids)]), [centroids_f, 1]), [-1]), trainable=centroids_trainable)
                 n_centroids = np.prod(n_centroids)
 
             elif isinstance(n_centroids, int):
@@ -248,11 +255,12 @@ def color_augmentation(current_filter_shape, locally_weighted_kernels, n_centroi
     # The colored distances are given by multiplying the similarities with the color values, and again, we
     # exploit the use of broadcasting
     colored_distances = similarities * colors * max_mask
-    color_val = tf.reduce_max(colored_distances, axis=[2, 4, 5], keep_dims=True)
+    color_max = tf.reduce_max(colored_distances, axis=[2, 4, 5], keep_dims=True)
+    color_min = tf.reduce_min(colored_distances, axis=[2, 4, 5], keep_dims=True)
     # Now we can compute
     color_aug = tf.clip_by_value(
         tf.tile(
-            tf.reduce_sum(colored_distances, axis=6),
+            tf.reduce_sum((colored_distances - color_min) / (color_max - color_min + 1e-8), axis=6),
             current_filter_shape[:-1] + [1 if per_feature else n_filters, 1, 1]), 0., 0.999)
     locally_weighted_kernels = tf.concat(2, [color_aug, locally_weighted_kernels])
     current_filter_shape[2] = 4

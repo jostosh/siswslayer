@@ -80,7 +80,7 @@ data is roughly consistent, which is not the case for MNIST.
 Nevertheless, the visualizations in TensorBoard help to understand
 what’s going on!
 
-The spatial weight sharing layer can be cound in `sisws.py`.
+The spatial weight sharing layer can be found in `sisws.py`.
 
 Running the code
 ----------------
@@ -95,9 +95,8 @@ Optionally, you might want to check out the other parameters:
 usage: train.py [-h] [--color_coding]
                 [--centroid_grid CENTROID_GRID [CENTROID_GRID ...]]
                 [--n_centroids N_CENTROIDS] [--logdir LOGDIR]
-                [--centroids_trainable CENTROIDS_TRAINABLE]
-                [--log_verbosity LOG_VERBOSITY]
-                [--n_filters N_FILTERS [N_FILTERS ...]]
+                [--centroids_trainable] [--log_verbosity LOG_VERBOSITY]
+                [--n_filters N_FILTERS [N_FILTERS ...]] [--n_epochs N_EPOCHS]
 
 Demonstration of the soft spatial weight sharing layer
 
@@ -112,11 +111,14 @@ optional arguments:
                         If n_centroids is given, the centroids are initialized
                         randomly
   --logdir LOGDIR       Specify dir for TensorFlow logs, defaults to [project_folder]/tensorboard
-  --centroids_trainable CENTROIDS_TRAINABLE
+  --centroids_trainable
                         If given, the centroid positions will be trainable
                         parameters
   --log_verbosity LOG_VERBOSITY
+                        TensorBoard log verbosity
   --n_filters N_FILTERS [N_FILTERS ...]
+                        Number of filters in the conv layers.
+  --n_epochs N_EPOCHS   Number of training epochs.
 ```
 
 So you could do something like:
@@ -138,11 +140,18 @@ folder is \[project_folder\]/tensorboard, so by doing:
 ```bash
 tensorboard --logdir tensorboard
 ```
+Then head over to the image tab to see the visualization of locally weighted kernels. Below in the image on the left you
+see the color coding that indicates which centroid is closest. In this case the centroids were initialized in a 
+grid-like fashion. 
+
+![Fixed centroid grid](im/tensorboard.png)
+![Trainable centroids](im/tensorboard2.png)
 
 Gender recognition results
 --------------------------
-In the plot below you can see the intermediary results for gender recognition, although I must say that these results
-were obtained using an older version of the code with slightly different initializations.
+In the plot below you can see the intermediary results for gender recognition on the [Adience](http://www.openu.ac.il/home/hassner/Adience/data.html) 
+data set, although I must say that these results
+were obtained using an older version of the code with slightly different centroid initializations. 
 <div>
     <a href="https://plot.ly/~jvdw/18/?share_key=ajyDZl4CkCwBMjtFHj39y5" target="_blank" title="adiencelevi_vs_siws.html" style="display: block; text-align: center;"><img src="https://plot.ly/~jvdw/18.png?share_key=ajyDZl4CkCwBMjtFHj39y5" alt="adiencelevi_vs_siws.html" style="max-width: 100%;width: 600px;"  width="600" onerror="this.onerror=null;this.src='https://plot.ly/404.png';" /></a>
     <script data-plotly="jvdw:18" sharekey-plotly="ajyDZl4CkCwBMjtFHj39y5" src="https://plot.ly/embed.js" async></script>

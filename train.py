@@ -32,26 +32,11 @@ logging.set_verbosity(logging.ERROR)                            # Here we suppre
 project_folder = os.path.dirname(os.path.realpath(__file__))
 
 
-def main(args):
-    X_train, Y_train, X_test, Y_test = prepare_data()
-    n_centroids = args.centroid_grid if not args.n_centroids else args.n_centroids
-    # Building convolutional network
-    network, sws_layer = build_cnn(args, n_centroids)
-    # Create a kernel summary that will be the default visualization of the locally weighted kernels of the spatial
-    # weight sharing layer
-    visual_summary = sws_layer.visual_summary
-    kernel_summ = tf.summary.image("Locally weighted filters", visual_summary, max_outputs=24)
-
-    # Use tflearns DNN to create a model
-    model = tflearn.DNN(network, tensorboard_verbose=args.log_verbosity, tensorboard_dir=args.logdir)
-    n_centroids = np.prod(n_centroids)
-    model.fit({'input': X_train}, {'target': Y_train}, n_epoch=10,
-              validation_set=({'input': X_test}, {'target': Y_test}),
-              snapshot_step=100, show_metric=True, run_id='convnet_mnist')
-
-    weighted_filters = sws_visualization(args, kernel_summ, model, n_centroids, visual_summary)
-
-    save_kernel_figs(model, sws_layer, weighted_filters)
+def prepare_data():
+    X_train, Y_train, X_test, Y_test = mnist.load_data(one_hot=True)
+    X_train = X_train.reshape([-1, 28, 28, 1])
+    X_test = X_test.reshape([-1, 28, 28, 1])
+    return X_train, Y_train, X_test, Y_test
 
 
 def save_kernel_figs(model, sws_layer, weighted_filters):
@@ -64,6 +49,16 @@ def save_kernel_figs(model, sws_layer, weighted_filters):
         for j, W in enumerate(Ws):
             scipy.misc.imsave(os.path.join(project_folder, 'kernel_images',
                                            'plain_filter{0}_{1}.png'.format(i, j)), W[:, :, 0, i])
+
+
+def create_legend(colors, n_centroids):
+    patches = [mpatches.Patch(color=c, label='Centroid {}'.format(i)) for i, c in enumerate(colors)]
+    fig = plt.figure(figsize=(3, 3))
+    fig.legend(handles=patches, labels=['Centroid {}'.format(i) for i in range(n_centroids)])
+    plt.savefig('tmp.png')
+    plot_image = scipy.misc.imread('tmp.png', mode='RGB')
+    os.remove('tmp.png')
+    return plot_image
 
 
 def sws_visualization(args, kernel_summ, model, n_centroids, visual_summary):
@@ -91,28 +86,18 @@ def sws_visualization(args, kernel_summ, model, n_centroids, visual_summary):
     return weighted_filters
 
 
-def create_legend(colors, n_centroids):
-    patches = [mpatches.Patch(color=c, label='Centroid {}'.format(i)) for i, c in enumerate(colors)]
-    fig = plt.figure(figsize=(3, 3))
-    fig.legend(handles=patches, labels=['Centroid {}'.format(i) for i in range(n_centroids)])
-    plt.savefig('tmp.png')
-    plot_image = scipy.misc.imread('tmp.png', mode='RGB')
-    os.remove('tmp.png')
-    return plot_image
-
-
 def build_cnn(args, n_centroids):
     n_filters = args.n_filters
     network = input_data(shape=[None, 28, 28, 1], name='input')
     network = spatial_weight_sharing(incoming=network, n_centroids=n_centroids, n_filters=n_filters[0], filter_size=7,
                                      strides=1, activation=tf.nn.relu, centroids_trainable=args.centroids_trainable,
-                                     scaling=1., per_feature=True, color_coding=args.color_coding)
+                                     per_feature=True, color_coding=args.color_coding)
     sws_layer = network
     network = local_response_normalization(network)
     network = max_pool_2d(network, 2)
     network = spatial_weight_sharing(incoming=network, n_centroids=n_centroids, n_filters=n_filters[1], filter_size=3,
-                                     strides=1, activation=tf.nn.relu, scaling=1, local_normalization=True,
-                                     sigma_trainable=True, per_feature=True)
+                                     strides=1, activation=tf.nn.relu, centroids_trainable=args.centroids_trainable,
+                                     per_feature=True)
     network = max_pool_2d(network, 2)
     network = local_response_normalization(network)
     network = fully_connected(network, 128, activation='relu')
@@ -122,14 +107,29 @@ def build_cnn(args, n_centroids):
     network = fully_connected(network, 10, activation='softmax')
     network = regression(network, optimizer='adam', learning_rate=0.01,
                          loss='categorical_crossentropy', name='target')
+
     return network, sws_layer
 
 
-def prepare_data():
-    X_train, Y_train, X_test, Y_test = mnist.load_data(one_hot=True)
-    X_train = X_train.reshape([-1, 28, 28, 1])
-    X_test = X_test.reshape([-1, 28, 28, 1])
-    return X_train, Y_train, X_test, Y_test
+def main(args):
+    X_train, Y_train, X_test, Y_test = prepare_data()
+    n_centroids = args.centroid_grid if not args.n_centroids else args.n_centroids
+    # Building convolutional network
+    network, sws_layer = build_cnn(args, n_centroids)
+    # Create a kernel summary that will be the default visualization of the locally weighted kernels of the spatial
+    # weight sharing layer
+    visual_summary = sws_layer.visual_summary
+    kernel_summ = tf.summary.image("Locally weighted filters", visual_summary, max_outputs=24)
+
+    # Use tflearns DNN to create a model
+    model = tflearn.DNN(network, tensorboard_verbose=args.log_verbosity, tensorboard_dir=args.logdir)
+    n_centroids = np.prod(n_centroids)
+    model.fit({'input': X_train}, {'target': Y_train}, n_epoch=args.n_epochs,
+              validation_set=({'input': X_test}, {'target': Y_test}),
+              snapshot_step=100, show_metric=True, run_id='convnet_mnist')
+
+    weighted_filters = sws_visualization(args, kernel_summ, model, n_centroids, visual_summary)
+    save_kernel_figs(model, sws_layer, weighted_filters)
 
 
 if __name__ == "__main__":
@@ -142,10 +142,12 @@ if __name__ == "__main__":
                                                                       'initialized randomly')
     parser.add_argument("--logdir", default=os.path.join(project_folder, 'tensorboard'),
                         help='Specify dir for TensorFlow logs')
-    parser.add_argument("--centroids_trainable", dest='centroids_trainable', default=False,
+    parser.add_argument("--centroids_trainable", dest='centroids_trainable', default=False, action='store_true',
                         help='If given, the centroid positions will be trainable parameters')
-    parser.add_argument("--log_verbosity", type=int, default=0)
-    parser.add_argument("--n_filters", nargs='+', type=int, default=[24, 48])
+    parser.add_argument("--log_verbosity", type=int, default=0, help="TensorBoard log verbosity")
+    parser.add_argument("--n_filters", nargs='+', type=int, default=[24, 48],
+                        help="Number of filters in the conv layers.")
+    parser.add_argument("--n_epochs", type=int, default=10, help="Number of training epochs.")
     args = parser.parse_args()
 
     if args.color_coding:
