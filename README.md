@@ -80,6 +80,8 @@ data is roughly consistent, which is not the case for MNIST.
 Nevertheless, the visualizations in TensorBoard help to understand
 what’s going on!
 
+The spatial weight sharing layer can be cound in `sisws.py`.
+
 Running the code
 ----------------
 
@@ -131,5 +133,17 @@ initialized as 3 x 3.
 
 TensorBoard
 -----------
+To get a good impression of what's going on inside these layers, have a look at TensorBoard. By default, the logging 
+folder is \[project_folder\]/tensorboard, so by doing:
+```bash
+tensorboard --logdir tensorboard
+```
 
-TODO
+Gender recognition results
+--------------------------
+In the plot below you can see the intermediary results for gender recognition, although I must say that these results
+were obtained using an older version of the code with slightly different initializations.
+<div>
+    <a href="https://plot.ly/~jvdw/18/?share_key=ajyDZl4CkCwBMjtFHj39y5" target="_blank" title="adiencelevi_vs_siws.html" style="display: block; text-align: center;"><img src="https://plot.ly/~jvdw/18.png?share_key=ajyDZl4CkCwBMjtFHj39y5" alt="adiencelevi_vs_siws.html" style="max-width: 100%;width: 600px;"  width="600" onerror="this.onerror=null;this.src='https://plot.ly/404.png';" /></a>
+    <script data-plotly="jvdw:18" sharekey-plotly="ajyDZl4CkCwBMjtFHj39y5" src="https://plot.ly/embed.js" async></script>
+</div>
