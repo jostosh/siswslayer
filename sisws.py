@@ -152,14 +152,14 @@ def spatial_weight_sharing(incoming, n_centroids, n_filters, filter_size, stride
 
             # Set the variables
             out.W = convs.W
-            out.b = tf.concat(0, [convs.b] +
-                              ([centroids_x, centroids_y] if centroids_trainable else []) +
-                              ([cov11, cov12, cov21, cov22] if sigma_trainable else []),
-                              name='b_concatAndCentroids')
+            out.b = [convs.b] \
+                    + ([centroids_x, centroids_y] if centroids_trainable else []) \
+                    + ([cov11, cov12, cov21, cov22] if sigma_trainable else [])
 
             # Add to collection for tflearn functionality
             tf.add_to_collection(tf.GraphKeys.LAYER_VARIABLES + '/' + name, out.W)
-            tf.add_to_collection(tf.GraphKeys.LAYER_VARIABLES + '/' + name, out.b)
+            for b in out.b:
+                tf.add_to_collection(tf.GraphKeys.LAYER_VARIABLES + '/' + name, b)
             tf.add_to_collection(tf.GraphKeys.ACTIVATIONS + '/' + name, out)
 
         with tf.name_scope("Summary"):

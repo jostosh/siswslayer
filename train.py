@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-""" Convolutional Neural Network for MNIST dataset classification task.
+""" Convolutional Neural Network using spatial interpolation soft weight sharing for MNIST dataset classification task.
 
 References:
     Y. LeCun, L. Bottou, Y. Bengio, and P. Haffner. "Gradient-based
@@ -33,15 +33,24 @@ project_folder = os.path.dirname(os.path.realpath(__file__))
 
 
 def prepare_data():
+    """
+    Prepares MNIST data
+    """
     X_train, Y_train, X_test, Y_test = mnist.load_data(one_hot=True)
     X_train = X_train.reshape([-1, 28, 28, 1])
     X_test = X_test.reshape([-1, 28, 28, 1])
     return X_train, Y_train, X_test, Y_test
 
 
-def save_kernel_figs(model, sws_layer, weighted_filters):
+def save_kernel_figs(session, sws_layer, weighted_filters):
+    """
+    Saves figures of the separate KCP kernels and the spatially weighted kernels
+        :param session:             The TensorFlow session
+        :param sws_layer:           The sisws layer op
+        :param weighted_filters:    The spatially weighted kernels
+    """
     os.makedirs(os.path.join(project_folder, 'kernel_images'), exist_ok=True)
-    Ws = model.session.run(sws_layer.W_list)
+    Ws = session.run(sws_layer.W_list)
     for i in range(weighted_filters.shape[0]):
         scipy.misc.imsave(os.path.join(project_folder, 'kernel_images', 'weighted_filters{0}.png'.format(i)),
                           weighted_filters[i, :, :, -1])
@@ -52,6 +61,14 @@ def save_kernel_figs(model, sws_layer, weighted_filters):
 
 
 def create_legend(colors, n_centroids):
+    """
+    Creates a simple legend to clarify the color coding in TensorBoard
+        :param colors:          The colors to visualize
+        :param n_centroids:     The number of centroids
+
+    Returns:
+        :return: An image containing a legend (generated with matplotlib)
+    """
     patches = [mpatches.Patch(color=c, label='Centroid {}'.format(i)) for i, c in enumerate(colors)]
     fig = plt.figure(figsize=(3, 3))
     fig.legend(handles=patches, labels=['Centroid {}'.format(i) for i in range(n_centroids)])
@@ -62,8 +79,19 @@ def create_legend(colors, n_centroids):
 
 
 def sws_visualization(args, kernel_summ, model, n_centroids, visual_summary):
+    """
+    Here we create a visualization of the spatially weighted kernels
+        :param args: The arguments passed at initiating the script
+        :param kernel_summ: The kernel summary
+        :param model: The tflearn model
+        :param n_centroids: The number of centroids
+        :param visual_summary: The visual summary op
+    Returns:
+        :return: weighted_filters: The spatially weighted filters
+    """
     weighted_filters, summ = model.session.run([visual_summary, kernel_summ])
     if args.color_coding:
+        # In this case we export color summaries to TensorBoard
         colors = [(c[0] / 255., c[1] / 255., c[2] / 255., 1.)
                   for c in cl.to_numeric(cl.scales['9']['qual']['Set1'])[:n_centroids]]
 
@@ -78,6 +106,7 @@ def sws_visualization(args, kernel_summ, model, n_centroids, visual_summary):
         distance_summ = tf.summary.image("Locally weighted distance", tf.constant(weighted_filters), max_outputs=24)
         summaries = model.session.run([kernel_summ, kernel_grayscale_summ, distance_summ])
     else:
+        # Otherwise, our summaries are given by just the kernels themselves
         summaries = [summ]
     model.trainer.summ_writer.reopen()
     for s in summaries:
@@ -87,6 +116,14 @@ def sws_visualization(args, kernel_summ, model, n_centroids, visual_summary):
 
 
 def build_cnn(args, n_centroids):
+    """
+    Builds CNN with 2 spatial interpolation soft weight sharing layers
+        :param args: Command line arguments
+        :param n_centroids: The number of centroids
+    Returns
+        :return: network: An Op that defines the head of the network
+                 sws_layer: The first sisws layer
+    """
     n_filters = args.n_filters
     network = input_data(shape=[None, 28, 28, 1], name='input')
     network = spatial_weight_sharing(incoming=network, n_centroids=n_centroids, n_filters=n_filters[0], filter_size=7,
@@ -112,6 +149,10 @@ def build_cnn(args, n_centroids):
 
 
 def main(args):
+    """
+    Performs training on the MNIST dataset with spatial interpolation soft weight sharning layers
+    :param args: Command line argumentss
+    """
     X_train, Y_train, X_test, Y_test = prepare_data()
     n_centroids = args.centroid_grid if not args.n_centroids else args.n_centroids
     # Building convolutional network
@@ -119,7 +160,7 @@ def main(args):
     # Create a kernel summary that will be the default visualization of the locally weighted kernels of the spatial
     # weight sharing layer
     visual_summary = sws_layer.visual_summary
-    kernel_summ = tf.summary.image("Locally weighted filters", visual_summary, max_outputs=24)
+    kernel_summ = tf.summary.image("Locally weighted filters", visual_summary, max_outputs=args.n_filters[0])
 
     # Use tflearns DNN to create a model
     model = tflearn.DNN(network, tensorboard_verbose=args.log_verbosity, tensorboard_dir=args.logdir)
@@ -128,9 +169,12 @@ def main(args):
               validation_set=({'input': X_test}, {'target': Y_test}),
               snapshot_step=100, show_metric=True, run_id='convnet_mnist')
 
+    # Store nice visualizations for TensorBoard
     weighted_filters = sws_visualization(args, kernel_summ, model, n_centroids, visual_summary)
-    save_kernel_figs(model, sws_layer, weighted_filters)
+    # Also store images of the kernels themselves
+    save_kernel_figs(model.session, sws_layer, weighted_filters)
 
+tf.nn.elu
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Demonstration of the soft spatial weight sharing layer")

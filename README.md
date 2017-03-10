@@ -145,6 +145,8 @@ see the color coding that indicates which centroid is closest. In this case the 
 grid-like fashion. 
 
 ![Fixed centroid grid](im/tensorboard.png)
+
+And here is what you obtain when you also let the centroids be trainable:
 ![Trainable centroids](im/tensorboard2.png)
 
 Gender recognition results
