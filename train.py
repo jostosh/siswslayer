@@ -128,13 +128,13 @@ def build_cnn(args, n_centroids):
     network = input_data(shape=[None, 28, 28, 1], name='input')
     network = spatial_weight_sharing(incoming=network, n_centroids=n_centroids, n_filters=n_filters[0], filter_size=7,
                                      strides=1, activation=tf.nn.relu, centroids_trainable=args.centroids_trainable,
-                                     per_feature=True, color_coding=args.color_coding)
+                                     per_feature=True, color_coding=args.color_coding, similarity_fn='InvEuclidean')
     sws_layer = network
     network = local_response_normalization(network)
     network = max_pool_2d(network, 2)
     network = spatial_weight_sharing(incoming=network, n_centroids=n_centroids, n_filters=n_filters[1], filter_size=3,
                                      strides=1, activation=tf.nn.relu, centroids_trainable=args.centroids_trainable,
-                                     per_feature=True)
+                                     per_feature=True, similarity_fn='InvEuclidean')
     network = max_pool_2d(network, 2)
     network = local_response_normalization(network)
     network = fully_connected(network, 128, activation='relu')
@@ -173,8 +173,6 @@ def main(args):
     weighted_filters = sws_visualization(args, kernel_summ, model, n_centroids, visual_summary)
     # Also store images of the kernels themselves
     save_kernel_figs(model.session, sws_layer, weighted_filters)
-
-tf.nn.elu
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Demonstration of the soft spatial weight sharing layer")

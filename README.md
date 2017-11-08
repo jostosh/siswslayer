@@ -41,11 +41,11 @@ result in a gradual change of local kernels when moving from centroid to
 centroid, allowing the features to be significantly more complex with
 relatively few extra parameters. Put mathematically, we define the
 output of a spatial weight sharing layer as follows:
+
 <img src="https://latex.codecogs.com/gif.latex?$$\mathsf{Y}&space;=&space;f\left(&space;\sum_{s=0}^{S-1}&space;\bigg(\mathsf&space;W_s&space;\ast&space;\mathsf&space;X&space;\oplus&space;\boldsymbol&space;b_s\bigg)&space;\odot&space;\mathsf&space;S_s&space;\right),$$" title="$$\mathsf{Y} = f\left( \sum_{s=0}^{S-1} \bigg(\mathsf W_s \ast \mathsf X \oplus \boldsymbol b_s\bigg) \odot \mathsf S_s \right),$$" /> 
 
 where <img src="https://latex.codecogs.com/gif.latex?$\mathsf&space;Y$" title="$\mathsf Y$" />
  is the output tensor, 
- <img src="https://latex.codecogs.com/gif.latex?$f(\cdot)$" title="$f(\cdot)$" />, 
   <img src="https://latex.codecogs.com/gif.latex?$\mathsf&space;W_s$" title="$\mathsf W_s$" />
   are rank 4 weight tensors, <img src="https://latex.codecogs.com/gif.latex?$\mathsf&space;X$" title="$\mathsf X$" />
    is the rank 4 input tensor,
@@ -151,9 +151,11 @@ And here is what you obtain when you also let the centroids be trainable:
 
 Gender recognition results
 --------------------------
-In the plot below you can see the intermediary results for gender recognition on the [Adience](http://www.openu.ac.il/home/hassner/Adience/data.html) 
+In the plot below you can see the intermediate results for gender recognition on the [Adience](http://www.openu.ac.il/home/hassner/Adience/data.html) 
 data set, although I must say that these results
-were obtained using an older version of the code with slightly different centroid initializations. 
+were obtained using an older version of the code with slightly different centroid initializations. This is the domain for which
+I expect the most potential benefit of using these layers, as the images are well aligned, so local specialization wil 
+presumably proof useful. At this point the difference is mainly visible in terms of data efficiency.
 <div>
     <a href="https://plot.ly/~jvdw/18/?share_key=ajyDZl4CkCwBMjtFHj39y5" target="_blank" title="adiencelevi_vs_siws.html" style="display: block; text-align: center;"><img src="https://plot.ly/~jvdw/18.png?share_key=ajyDZl4CkCwBMjtFHj39y5" alt="adiencelevi_vs_siws.html" style="max-width: 100%;width: 600px;"  width="600" onerror="this.onerror=null;this.src='https://plot.ly/404.png';" /></a>
     <script data-plotly="jvdw:18" sharekey-plotly="ajyDZl4CkCwBMjtFHj39y5" src="https://plot.ly/embed.js" async></script>

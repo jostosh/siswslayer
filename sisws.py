@@ -6,7 +6,8 @@ import numpy as np
 
 def spatial_weight_sharing(incoming, n_centroids, n_filters, filter_size, strides, activation, name='SoftWeightConv',
                            scope=None, reuse=False, local_normalization=True, centroids_trainable=False, scaling=1.0,
-                           padding='same', sigma_trainable=None, per_feature=False, color_coding=False):
+                           padding='same', sigma_trainable=None, per_feature=False, color_coding=False,
+                           similarity_fn='Exp', weight_init='torch', mahalanobis=False):
     """
     Defines a soft weight sharing layer. The soft weight sharing is accomplished by performing multiple convolutions
     which are then combined by a local weighting locally depends on the distance to the 'centroid' of each convolution.
@@ -34,10 +35,15 @@ def spatial_weight_sharing(incoming, n_centroids, n_filters, filter_size, stride
                     centroids_trainable.
         :param per_feature      If True, the centroids are given per output feature.
         :param color_coding     If True, uses color coding for visual summary
+        :param similarity_fn    Similarity function to be used. Can be either 'Exp' or 'InvEuclidean'
     Return values:
         :return: A 4D Tensor with similar dimensionality as a normal conv_2d's output
     """
 
+    valid_fns = ['Exp', 'InvEuclidean']
+    if similarity_fn not in valid_fns:
+        raise ValueError("Invalid similarity function {}, must be either {}"
+                         .format(similarity_fn, ' or '.join(valid_fns)))
     try:
         vscope = tf.variable_scope(scope, default_name=name, values=[incoming],
                                    reuse=reuse)
@@ -61,12 +67,28 @@ def spatial_weight_sharing(incoming, n_centroids, n_filters, filter_size, stride
     with vscope as scope:
         name = scope.name
         with tf.name_scope("SubConvolutions"):
+            if weight_init == 'torch':
+                input_channels = incoming.get_shape().as_list()[-1]
+                d = 1.0 / np.sqrt(filter_size * filter_size * input_channels)
+                W = tf.random_uniform(
+                    [filter_size, filter_size, input_channels, n_filters],
+                    minval=-d, maxval=d
+                )
+                b   = tf.random_uniform([n_filters], minval=-d, maxval=d)
+
+                w_init = tf.tile(W, [1, 1, 1, np.prod(n_centroids)])
+                b_init = tf.tile(b, [np.prod(n_centroids)])
+            else:
+                w_init = 'uniform_scaling'
+                b_init = 'zeros'
+
             convs = tflearn.conv_2d(incoming, nb_filter=n_filters * np.prod(n_centroids), filter_size=filter_size,
-                                    strides=strides, padding=padding, weight_decay=0., name='Conv', activation='linear')
+                                    strides=strides, padding=padding, weight_decay=0., name='Conv', activation='linear',
+                                    weights_init=w_init, bias_init=b_init)
             stacked_convs = tf.reshape(convs, [-1] + convs.get_shape().as_list()[1:-1] +
                                        [n_filters, np.prod(n_centroids)], name='StackedConvs')
 
-        _, m, n, k, _ = stacked_convs.get_shape().as_list()
+            _, m, n, k, _ = stacked_convs.get_shape().as_list()
 
         with tf.name_scope("DistanceWeighting"):
             # First define the x-coordinates per cell. We exploit TensorFlow's broadcast mechanisms by using
@@ -127,13 +149,20 @@ def spatial_weight_sharing(incoming, n_centroids, n_filters, filter_size, stride
             x_diff = tf.reshape(centroids_x, centroid_broadcasting_shape) - x_coordinates
             y_diff = tf.reshape(centroids_y, centroid_broadcasting_shape) - y_coordinates
 
-            x_diff2 = tf.square(x_diff * tf.reshape(cov11, centroid_broadcasting_shape) +
-                                y_diff * tf.reshape(cov12, centroid_broadcasting_shape))
-            y_diff2 = tf.square(x_diff * tf.reshape(cov21, centroid_broadcasting_shape) +
-                                y_diff * tf.reshape(cov22, centroid_broadcasting_shape))
+            if mahalanobis:
+                x_diff2 = x_diff * x_diff * tf.reshape(cov11, centroid_broadcasting_shape) + \
+                          y_diff * y_diff * tf.reshape(cov12, centroid_broadcasting_shape)
+                y_diff2 = x_diff * x_diff * tf.reshape(cov21, centroid_broadcasting_shape) + \
+                          y_diff * y_diff * tf.reshape(cov22, centroid_broadcasting_shape)
+            else:
+                x_diff2 = tf.square(x_diff * tf.reshape(cov11, centroid_broadcasting_shape) +
+                                    y_diff * tf.reshape(cov12, centroid_broadcasting_shape))
+                y_diff2 = tf.square(x_diff * tf.reshape(cov21, centroid_broadcasting_shape) +
+                                    y_diff * tf.reshape(cov22, centroid_broadcasting_shape))
 
             # Again, we use broadcasting. The result is of shape [1, m, n, 1, c]
-            similarities = tf.exp(-(x_diff2 + y_diff2), 'similarities')
+            similarities = tf.exp(-(x_diff2 + y_diff2), 'similarities') if similarity_fn == 'Exp' \
+                else tf.div(1.0, (1.0 + tf.sqrt(x_diff2 + y_diff2)), name='similarities')
 
             # Optionally, we will perform local normalization such that the weight coefficients add up to 1 for each
             # spatial cell.
@@ -145,7 +174,7 @@ def spatial_weight_sharing(incoming, n_centroids, n_filters, filter_size, stride
 
         with tf.name_scope("SoftWeightSharing"):
             # Compute the distance-weighted output
-            dist_weighted = tf.mul(similarities, stacked_convs, name='DistanceWeighted')
+            dist_weighted = tf.multiply(similarities, stacked_convs, name='DistanceWeighted')
 
             # Apply non-linearity
             out = activation(tf.reduce_sum(dist_weighted, axis=4), name='Output')
@@ -166,9 +195,11 @@ def spatial_weight_sharing(incoming, n_centroids, n_filters, filter_size, stride
             summary_image = build_visualization(centroids_f, color_coding, convs, n_centroids, n_filters, per_feature,
                                                 similarities)
             out.visual_summary = summary_image
-            out.W_list = tf.split(3, n_centroids, convs.W)
-
-    # Add to collection for tflearn functionality
+            try:
+                out.W_list = tf.split(3, n_centroids, convs.W)
+            except:
+                out.W_list = tf.split(convs.W, n_centroids * [n_filters], axis=3)
+                # Add to collection for tflearn functionality
     tf.add_to_collection(tf.GraphKeys.LAYER_TENSOR + '/' + name, out)
     return out
 
@@ -189,7 +220,7 @@ def build_visualization(centroids_f, color_coding, conv_layer, n_centroids, n_fi
     # Now we stack the weights, that is, there is an extra axis for the centroids
     weights_stacked = tf.reshape(conv_layer.W, filter_shape + [1, 1, n_centroids])
     # Get the locally weighted kernels
-    locally_weighted_kernels = tf.reduce_sum(tf.mul(similarities_downsampled, weights_stacked), axis=6)
+    locally_weighted_kernels = tf.reduce_sum(tf.multiply(similarities_downsampled, weights_stacked), axis=6)
     # Normalize
     locally_weighted_kernels -= tf.reduce_min(locally_weighted_kernels, axis=[4, 5], keep_dims=True)
     locally_weighted_kernels /= tf.reduce_max(locally_weighted_kernels, axis=[4, 5], keep_dims=True)
