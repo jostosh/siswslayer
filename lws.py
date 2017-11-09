@@ -205,7 +205,7 @@ class _LocalWeightSharing(base.Layer):
             for i in range(self.rank)
         ]
 
-        difference_squared = [c - m for c, m in zip(self.centroid_coordinates, mesh_coordinates)]
+        difference_squared = [tf.square(c - m) for c, m in zip(self.centroid_coordinates, mesh_coordinates)]
         similarities = math_ops.exp(math_ops.negative(reduce(math_ops.add, difference_squared)))
         if self.local_normalization:
             local_sums = math_ops.reduce_sum(similarities, axis=centroid_axis, keep_dims=True)
