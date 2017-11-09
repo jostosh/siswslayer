@@ -18,4 +18,7 @@ class Config(ConfigBase):
     log_dir = None
     batch_size = 32
     epochs = 150
-    sample = 0.0
+    verbose = 0
+    exist_ok = False
+    patience = 25
+    workers = 4

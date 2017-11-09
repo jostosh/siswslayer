@@ -20,10 +20,10 @@ def train():
     model.fit_generator(
         dataset.generator(), steps_per_epoch=dataset.steps_per_epoch(), epochs=Config.epochs,
         validation_data=dataset.generator(train=False), validation_steps=dataset.validation_steps(),
-        verbose=1, workers=4, use_multiprocessing=True, callbacks=[
+        verbose=Config.verbose, workers=Config.workers, use_multiprocessing=True, callbacks=[
             CSVLogger(join(Config.log_dir, 'logs.csv')),
             TerminateOnNaN(),
-            ReduceLROnPlateau(patience=25),
+            ReduceLROnPlateau(patience=Config.patience),
             EstimateTimeRemaining(total_epochs=Config.epochs)
         ]
     )
@@ -31,5 +31,5 @@ def train():
 if __name__ == "__main__":
     Config.load()
     Config.log_dir = join(Config.log_base, Config.model, 'fold{}'.format(Config.fold))
-    makedirs(Config.log_dir)
+    makedirs(Config.log_dir, exist_ok=Config.exist_ok)
     train()

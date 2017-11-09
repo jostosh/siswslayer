@@ -15,4 +15,4 @@ module load tensorflow
 source envs/lws/bin/activate
 export PYTHONPATH=$PYTHONPATH:/home/s2098407/packages/hypylib
 
-srun python siswslayer/train_keras.py $*
+srun python siswslayer/train_keras.py --data_path /data/s2098407/adience $*
