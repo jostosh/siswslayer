@@ -16,6 +16,9 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 
 def train():
     dataset = get_dataset(Config.dataset)
+    if Config.ensure_data:
+        print("Dataset {} ready".format(Config.dataset))
+        return
     model = model_dict[Config.model](input_shape=dataset.input_shape(), n_classes=dataset.n_classes())
     model.fit_generator(
         dataset.generator(), steps_per_epoch=dataset.steps_per_epoch(), epochs=Config.epochs,
@@ -31,6 +34,7 @@ def train():
 if __name__ == "__main__":
     Config.load()
     if Config.check_imports:
+        print("Imports succeeded!")
         exit(0)
     Config.log_dir = join(Config.log_base, Config.dataset, Config.model, 'fold{}'.format(Config.fold))
     makedirs(Config.log_dir, exist_ok=Config.exist_ok)

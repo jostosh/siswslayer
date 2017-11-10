@@ -40,3 +40,4 @@ class Config(ConfigBase):
     cropy = Parameter(default=[61, 189], nargs=2, type=int)
     kerosene_path = '/home/jos/datasets/kerosene'
     check_imports = False
+    ensure_data = False
