@@ -8,9 +8,12 @@ def path_join(*args):
 
 
 class Config(ConfigBase):
+    dataset = Parameter(default='adience', choices=['adience', 'lfw', 'mnist', 'svhn'])
     data_path = path_join("datasets", "aligned")
     log_base = path_join("siswslayer", "logs")
-    model = Parameter(default="cnn", choices=['cnn', 'lws1', 'lws2', 'lcnn1', 'lcnn2'])
+    model = Parameter(
+        default="cnn", choices=['cnn', 'lws1', 'lws2', 'lcnn1', 'lcnn2', 'lws1s', 'lws2s', 'lcnn1s', 'lcnn2s', 'cnns']
+    )
     optimizer = Parameter(default="adam", choices=['adam', 'rmsprop', 'nadam'])
     lr = 1e-4
     log = 'test'
@@ -22,3 +25,18 @@ class Config(ConfigBase):
     exist_ok = False
     patience = 25
     workers = 4
+    rotation_range = 10
+    width_shift_range = 0.2
+    height_shift_range = 0.2
+    zoom_range = 0.2
+    horizontal_flip = True
+    in_memory = True
+    width = 227
+    height = 227
+    transpose = False
+    resize = False
+    crop = False
+    cropx = Parameter(default=[61, 189], nargs=2, type=int)
+    cropy = Parameter(default=[61, 189], nargs=2, type=int)
+    kerosene_path = '/home/jos/datasets/kerosene'
+    check_imports = False

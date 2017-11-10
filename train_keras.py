@@ -7,7 +7,7 @@ from tensorflow.contrib.keras.python.keras.callbacks import TerminateOnNaN, CSVL
 from callbacks import EstimateTimeRemaining
 
 from config import Config
-from dataset import Dataset
+from dataset import get_dataset
 from models import model_dict
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -15,7 +15,7 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 
 
 def train():
-    dataset = Dataset()
+    dataset = get_dataset(Config.dataset)
     model = model_dict[Config.model](input_shape=dataset.input_shape(), n_classes=dataset.n_classes())
     model.fit_generator(
         dataset.generator(), steps_per_epoch=dataset.steps_per_epoch(), epochs=Config.epochs,
@@ -30,6 +30,8 @@ def train():
 
 if __name__ == "__main__":
     Config.load()
-    Config.log_dir = join(Config.log_base, Config.model, 'fold{}'.format(Config.fold))
+    if Config.check_imports:
+        exit(0)
+    Config.log_dir = join(Config.log_base, Config.dataset, Config.model, 'fold{}'.format(Config.fold))
     makedirs(Config.log_dir, exist_ok=Config.exist_ok)
     train()
