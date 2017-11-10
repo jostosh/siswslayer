@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=12
-#SBATCH --job-name=CIFAR10
+#SBATCH --job-name=SVHN
 #SBATCH --mail-type ALL
 #SBATCH --mail-user jos.vandewolfshaar@gmail.com
 #SBATCH --output CIFAR10-%j.log
@@ -14,4 +14,4 @@
 module load tensorflow
 source envs/lws/bin/activate
 
-srun python siswslayer/train_keras.py --dataset cifar10 --kerosene_path /data/s2098407/kerosene $*
+srun python siswslayer/train_keras.py --dataset svhn --kerosene_path /data/s2098407/kerosene $*
