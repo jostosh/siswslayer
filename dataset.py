@@ -208,5 +208,7 @@ def get_dataset(name):
         'mnist': MNIST,
         'svhn': SVHN,
         'lfw': LFW,
-        'cifar10': Cifar10
+        'cifar10': Cifar10,
+        'iris': Iris,
+        'cifar100': Cifar100
     }[name]()
