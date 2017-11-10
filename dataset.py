@@ -194,6 +194,13 @@ class Cifar100(DatasetBase):
         return None, X_train, y_train, X_test, y_test
 
 
+class Iris(DatasetBase):
+
+    def load_data(self):
+        from kerosene.datasets.iris import load_data
+        (X_train, y_train), (X_test, y_test) = DatasetBase.load_kerosene(load_data)
+        return None, X_train, y_train, X_test, y_test
+
 
 def get_dataset(name):
     return {
