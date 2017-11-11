@@ -14,6 +14,8 @@ class DatasetBase(abc.ABC):
     def __init__(self):
         self.h5f, self.X_train, self.y_train, self.X_test, self.y_test = self.load_data()
 
+        self.ensure_in_memory()
+
         # Perform some preprocessing steps
         self.preprocess()
 
@@ -30,6 +32,13 @@ class DatasetBase(abc.ABC):
         self.ensure_channels_last()
         # self.crop()
         self.ensure_resized()
+
+    def ensure_in_memory(self):
+        if Config.in_memory:
+            self.X_train = self.X_train[:]
+            self.y_train = self.y_train[:]
+            self.X_test = self.X_test[:]
+            self.y_test = self.y_test[:]
 
     def train_generator(self):
         return ImageDataGenerator(
@@ -111,21 +120,11 @@ class Adience(DatasetBase):
 
         self.h5f = h5py.File(Config.data_path + '/fold{}.hdf5'.format(Config.fold), 'r')
 
-        if Config.in_memory:
-            # Loads the numpy arrays in memory
-            self.X_train = self.h5f['train/images'][:]
-            self.y_train = self.h5f['train/labels'][:]
+        self.X_train = self.h5f['train/images']
+        self.y_train = self.h5f['train/labels']
 
-            self.X_test = self.h5f['test/images'][:]
-            self.y_test = self.h5f['test/labels'][:]
-
-        else:
-            # Uses HDF5 access to files
-            self.X_train = self.h5f['train/images']
-            self.y_train = self.h5f['train/labels']
-
-            self.X_test = self.h5f['test/images']
-            self.y_test = self.h5f['test/labels']
+        self.X_test = self.h5f['test/images']
+        self.y_test = self.h5f['test/labels']
 
         return self.h5f, self.X_train, self.y_train, self.X_test, self.y_test
 

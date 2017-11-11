@@ -7,7 +7,7 @@ def path_join(*args):
     return os.path.join(os.path.expanduser("~"), *args)
 
 
-class   Config(ConfigBase):
+class Config(ConfigBase):
     dataset = Parameter(default='adience', choices=['adience', 'lfw', 'mnist', 'svhn', 'cifar10', 'cifar100', 'iris'])
     data_path = path_join("datasets", "aligned")
     log_base = path_join("siswslayer", "logs")
@@ -33,7 +33,6 @@ class   Config(ConfigBase):
     in_memory = True
     width = 227
     height = 227
-    transpose = False
     resize = False
     crop = False
     cropx = Parameter(default=[61, 189], nargs=2, type=int)

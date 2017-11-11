@@ -91,15 +91,15 @@ class LWS2Small(CNNSmall):
 
 class LCNN2Small(CNNSmall):
     def second_block(self):
-        self.add(LocallyConnected2D(filters=64, kernel_size=3, strides=(1, 1), activation=tf.nn.elu, padding='same'))
-        self.add(LocallyConnected2D(filters=64, kernel_size=3, strides=(1, 1), activation=tf.nn.elu, padding='same'))
+        self.add(LocallyConnected2D(filters=64, kernel_size=3, strides=(1, 1), activation=tf.nn.elu))
+        self.add(LocallyConnected2D(filters=64, kernel_size=3, strides=(1, 1), activation=tf.nn.elu))
         self.add(MaxPool2D(pool_size=(2, 2), strides=2))
 
 
 class LCNN1Small(CNNSmall):
     def second_block(self):
         self.add(Conv2D(filters=64, kernel_size=3, strides=(1, 1), activation=tf.nn.elu, padding='same'))
-        self.add(LocallyConnected2D(filters=64, kernel_size=3, strides=(1, 1), activation=tf.nn.elu, padding='same'))
+        self.add(LocallyConnected2D(filters=64, kernel_size=3, strides=(1, 1), activation=tf.nn.elu))
         self.add(MaxPool2D(pool_size=(2, 2), strides=2))
 
 
