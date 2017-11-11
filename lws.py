@@ -11,8 +11,9 @@ from tensorflow.python.layers import base
 from tensorflow.python.layers import utils
 from numpy import prod, ones
 from tensorflow.contrib.keras.python.keras.layers import Layer
+from tensorflow.contrib.keras.python.keras import initializers
 from functools import reduce
-from identity_init import Identity
+from identity_init import Identity, TilingInitializer
 
 
 def get_tensor_shape(t):
@@ -69,7 +70,7 @@ class _LocalWeightSharing(base.Layer):
                  centroids=3,
                  local_normalization=True,
                  centroids_trainable=True,
-                 per_filter=False,
+                 per_filter=True,
                  padding='valid',
                  data_format='channels_last',
                  dilation_rate=1,
@@ -141,7 +142,6 @@ class _LocalWeightSharing(base.Layer):
         centroid_broadcasting_shape = ones(self.rank + 3)
         centroid_broadcasting_shape[kernel_axis] = self.filters if self.per_filter else 1
         centroid_broadcasting_shape[centroid_axis] = self.centroids
-
         self.centroid_coordinates = [
             self.add_variable(
                 name='centroids_axis{}'.format(i),
@@ -341,14 +341,18 @@ class LocalWeightSharing2D(_LocalWeightSharing, Layer):
                centroids=3,
                centroids_trainable=True,
                local_normalization=True,
-               per_filter=False,
+               per_filter=True,
                padding='valid',
                data_format='channels_last',
                dilation_rate=(1, 1),
                activation=None,
                use_bias=True,
-               kernel_initializer=None,
-               bias_initializer=init_ops.zeros_initializer(),
+               kernel_initializer=TilingInitializer(
+                   inner_initializer='glorot_uniform',
+                   axis=3,
+                   splits=3
+               ),
+               bias_initializer='zeros',
                kernel_regularizer=None,
                bias_regularizer=None,
                activity_regularizer=None,

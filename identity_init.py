@@ -1,6 +1,8 @@
 from tensorflow.python.ops.init_ops import Initializer, _assert_float_dtype
 from tensorflow.python.ops import linalg_ops, array_ops
 from tensorflow.python.framework import dtypes
+from tensorflow.contrib.keras.python.keras import initializers
+from copy import deepcopy
 
 
 class Identity(Initializer):
@@ -36,3 +38,33 @@ class Identity(Initializer):
 
     def get_config(self):
         return {"gain": self.gain, "dtype": self.dtype.name}
+
+
+class TilingInitializer(Initializer):
+    """
+    Initializes a tiled tensor where we tile along a single axis
+    Args:
+        inner_initializer: The initializer instance that initializes a single block
+        axis: The axis to tile along
+        splits: The number of splits
+    """
+
+    def __init__(self, inner_initializer, axis, splits):
+        self.inner_initializer = initializers.get(inner_initializer)
+        self.axis = axis
+        self.splits = splits
+
+    def __call__(self, shape, dtype=None, partition_info=None):
+        single_block_shape = deepcopy(shape)
+        if single_block_shape[self.axis] % self.splits != 0:
+            raise ValueError("Axis {} with length {} is not multiple of {}".format(
+                self.axis, single_block_shape[self.axis], self.splits))
+        single_block_shape[self.axis] //= self.splits
+        print(single_block_shape, shape)
+        single_block = self.inner_initializer(shape=single_block_shape, dtype=dtype, partition_info=partition_info)
+        return array_ops.tile(single_block, [1 if j != self.axis else self.splits for j in range(len(shape))])
+
+    def get_config(self):
+        return {"axis": self.axis, "splits": self.splits, "inner_init": self.inner_initializer}
+
+
