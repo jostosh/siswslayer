@@ -20,7 +20,7 @@ class   Config(ConfigBase):
     fold = 0
     log_dir = None
     batch_size = 32
-    epochs = 150
+    epochs = 300
     verbose = 0
     exist_ok = False
     patience = 25

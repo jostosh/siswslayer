@@ -12,6 +12,7 @@ from tensorflow.python.layers import utils
 from numpy import prod, ones
 from tensorflow.contrib.keras.python.keras.layers import Layer
 from functools import reduce
+from identity_init import Identity
 
 
 def get_tensor_shape(t):
@@ -135,7 +136,7 @@ class _LocalWeightSharing(base.Layer):
         self.input_spec = base.InputSpec(ndim=self.rank + 2,
                                          axes={channel_axis: input_dim})
 
-        kernel_axis = self.rank + 1
+        kernel_axis = self.rank + 1 if self.data_format == 'channels_last' else 1
         centroid_axis = self.rank + 2
         centroid_broadcasting_shape = ones(self.rank + 3)
         centroid_broadcasting_shape[kernel_axis] = self.filters if self.per_filter else 1
@@ -150,10 +151,19 @@ class _LocalWeightSharing(base.Layer):
                 dtype=self.dtype
             ) for i in range(self.rank)
         ]
+
+        distance_matrix_init_shape = list(centroid_broadcasting_shape) + [self.rank, self.rank]
+        self.distance_matrix = self.add_variable(
+            name='distance_matrix',
+            shape=distance_matrix_init_shape,
+            initializer=Identity(),
+            trainable=self.centroids_trainable,
+            dtype=self.dtype
+        )
         self.built = True
 
     def call(self, inputs):
-        preactivaton = nn.convolution(
+        outputs = nn.convolution(
             input=inputs,
             filter=self.kernel,
             dilation_rate=self.dilation_rate,
@@ -163,28 +173,27 @@ class _LocalWeightSharing(base.Layer):
 
         if self.bias is not None:
             if self.data_format == 'channels_first':
-                raise ValueError("Channels first not yet supported")
-                # if self.rank == 1:
-                #     # nn.bias_add does not accept a 1D input tensor.
-                #     bias = array_ops.reshape(self.bias, (1, self.filters, 1))
-                #     outputs += bias
-                # if self.rank == 2:
-                #     outputs = nn.bias_add(outputs, self.bias, data_format='NCHW')
-                # if self.rank == 3:
-                #     # As of Mar 2017, direct addition is significantly slower than
-                #     # bias_add when computing gradients. To use bias_add, we collapse Z
-                #     # and Y into a single dimension to obtain a 4D input tensor.
-                #     outputs_shape = outputs.shape.as_list()
-                #     outputs_4d = array_ops.reshape(outputs,
-                #                                    [outputs_shape[0], outputs_shape[1],
-                #                                     outputs_shape[2] * outputs_shape[3],
-                #                                     outputs_shape[4]])
-                #     outputs_4d = nn.bias_add(outputs_4d, self.bias, data_format='NCHW')
-                #     outputs = array_ops.reshape(outputs_4d, outputs_shape)
+                if self.rank == 1:
+                    # nn.bias_add does not accept a 1D input tensor.
+                    bias = array_ops.reshape(self.bias, (1, self.filters, 1))
+                    outputs += bias
+                if self.rank == 2:
+                    outputs = nn.bias_add(outputs, self.bias, data_format='NCHW')
+                if self.rank == 3:
+                    # As of Mar 2017, direct addition is significantly slower than
+                    # bias_add when computing gradients. To use bias_add, we collapse Z
+                    # and Y into a single dimension to obtain a 4D input tensor.
+                    outputs_shape = outputs.shape.as_list()
+                    outputs_4d = array_ops.reshape(outputs,
+                                                   [outputs_shape[0], outputs_shape[1],
+                                                    outputs_shape[2] * outputs_shape[3],
+                                                    outputs_shape[4]])
+                    outputs_4d = nn.bias_add(outputs_4d, self.bias, data_format='NCHW')
+                    outputs = array_ops.reshape(outputs_4d, outputs_shape)
             else:
-                preactivaton = nn.bias_add(preactivaton, self.bias, data_format='NHWC')
+                outputs = nn.bias_add(outputs, self.bias, data_format='NHWC')
 
-        outputs = self._linear_local_weight_sharing(preactivaton)
+        outputs = self._linear_local_weight_sharing(outputs)
 
         if self.activation is not None:
             return self.activation(outputs)
@@ -198,21 +207,54 @@ class _LocalWeightSharing(base.Layer):
             preactivation, preactivation_shape[:kernel_axis] + [self.filters, self.centroids]
         )
 
-        mesh_coordinates = [
-            array_ops.reshape(
-                math_ops.linspace(0.0, 1.0, preactivation_shape[i + 1]),
-                array_ops.one_hot(indices=i + 1, on_value=-1, off_value=1, depth=self.rank + 3))
-            for i in range(self.rank)
-        ]
-
-        difference_squared = [tf.square(c - m) for c, m in zip(self.centroid_coordinates, mesh_coordinates)]
-        similarities = math_ops.exp(math_ops.negative(reduce(math_ops.add, difference_squared)))
+        similarities = self._compute_similarities(centroid_axis, preactivation_shape)
         if self.local_normalization:
             local_sums = math_ops.reduce_sum(similarities, axis=centroid_axis, keep_dims=True)
             similarities = math_ops.divide(similarities, local_sums)
         similarity_weighted = math_ops.multiply(outputs_centroids_stacked, similarities)
         outputs = math_ops.reduce_sum(similarity_weighted, axis=centroid_axis)
         return outputs
+
+    def _compute_similarities(self, centroid_axis, preactivation_shape):
+        mesh_coordinates = self._init_mesh(preactivation_shape)
+        sum_squared_difference = self._compute_weighted_squared_difference(
+            centroid_axis, mesh_coordinates, preactivation_shape
+        )
+        similarities = math_ops.exp(math_ops.negative(sum_squared_difference))
+        return similarities
+
+    def _compute_weighted_squared_difference(self, centroid_axis, mesh_coordinates, preactivation_shape):
+        difference = array_ops.stack(
+            [c - m for c, m in zip(self.centroid_coordinates, mesh_coordinates)],
+            axis=centroid_axis + 1
+        )
+        difference = array_ops.expand_dims(difference, axis=centroid_axis + 1)
+        distance_matrix = array_ops.tile(
+            self.distance_matrix,
+            [1 if (i == 0 or i > 2) else preactivation_shape[i]
+             for i in range(len(get_tensor_shape(self.distance_matrix)))]
+        )
+        difference_weighted = math_ops.matmul(difference, distance_matrix)
+        perm = list(range(len(get_tensor_shape(difference_weighted))))
+        perm[-2], perm[-1] = perm[-1], perm[-2]
+        sum_squared_difference = array_ops.reshape(
+            math_ops.matmul(difference_weighted, array_ops.transpose(difference_weighted, perm=perm)),
+            get_tensor_shape(difference)[:-2]
+        )
+        return sum_squared_difference
+
+    def _init_mesh(self, preactivation_shape):
+        mesh_coordinates = [
+            array_ops.tile(
+                array_ops.reshape(
+                    math_ops.linspace(0.0, 1.0, preactivation_shape[i + 1]),
+                    [-1 if j == i + 1 else 1 for j in range(self.rank + 3)]
+                ),
+                [1 if (j in [0, i + 1] or j > self.rank) else preactivation_shape[j] for j in range(self.rank + 3)]
+            )
+            for i in range(self.rank)
+        ]
+        return mesh_coordinates
 
     def _compute_output_shape(self, input_shape):
         input_shape = tensor_shape.TensorShape(input_shape).as_list()

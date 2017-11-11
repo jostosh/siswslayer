@@ -19,7 +19,9 @@ def train():
     if Config.ensure_data:
         print("Dataset {} ready".format(Config.dataset))
         return
+    print("Loaded data")
     model = model_dict[Config.model](input_shape=dataset.input_shape(), n_classes=dataset.n_classes())
+    print("Built model")
     model.fit_generator(
         dataset.generator(), steps_per_epoch=dataset.steps_per_epoch(), epochs=Config.epochs,
         validation_data=dataset.generator(train=False), validation_steps=dataset.validation_steps(),
