@@ -352,7 +352,7 @@ class LocalWeightSharing2D(_LocalWeightSharing, Layer):
                    axis=3,
                    splits=3
                ),
-               bias_initializer='zeros',
+               bias_initializer=init_ops.zeros_initializer(),
                kernel_regularizer=None,
                bias_regularizer=None,
                activity_regularizer=None,

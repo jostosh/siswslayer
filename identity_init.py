@@ -60,7 +60,6 @@ class TilingInitializer(Initializer):
             raise ValueError("Axis {} with length {} is not multiple of {}".format(
                 self.axis, single_block_shape[self.axis], self.splits))
         single_block_shape[self.axis] //= self.splits
-        print(single_block_shape, shape)
         single_block = self.inner_initializer(shape=single_block_shape, dtype=dtype, partition_info=partition_info)
         return array_ops.tile(single_block, [1 if j != self.axis else self.splits for j in range(len(shape))])
 
