@@ -55,10 +55,10 @@ class TilingInitializer(Initializer):
         self.splits = splits
 
     def __call__(self, shape, dtype=None, partition_info=None):
-        single_block_shape = deepcopy(shape)
-        if single_block_shape[self.axis] % self.splits != 0:
+        if shape[self.axis] % self.splits != 0:
             raise ValueError("Axis {} with length {} is not multiple of {}".format(
-                self.axis, single_block_shape[self.axis], self.splits))
+                self.axis, shape[self.axis], self.splits))
+        single_block_shape = deepcopy(shape)
         single_block_shape[self.axis] //= self.splits
         single_block = self.inner_initializer(shape=single_block_shape, dtype=dtype, partition_info=partition_info)
         return array_ops.tile(single_block, [1 if j != self.axis else self.splits for j in range(len(shape))])
@@ -67,3 +67,36 @@ class TilingInitializer(Initializer):
         return {"axis": self.axis, "splits": self.splits, "inner_init": self.inner_initializer}
 
 
+class ConcatInitializer(Initializer):
+    """
+    Initializes a tiled tensor where we tile along a single axis
+    Args:
+        inner_initializer: The initializer instance that initializes a single block
+        axis: The axis to tile along
+        splits: The number of splits
+    """
+
+    def __init__(self, inner_initializer, axis, splits):
+        self.inner_initializer = initializers.get(inner_initializer)
+        self.axis = axis
+        self.splits = splits
+
+    def __call__(self, shape, dtype=None, partition_info=None):
+        if shape[self.axis] % self.splits != 0:
+            raise ValueError("Axis {} with length {} is not multiple of {}".format(
+                self.axis, shape[self.axis], self.splits))
+        single_block_shape = deepcopy(shape)
+        single_block_shape[self.axis] //= self.splits
+        single_blocks = [self.inner_initializer(shape=single_block_shape, dtype=dtype, partition_info=partition_info)
+                         for _ in range(self.splits)]
+        return array_ops.concat(single_blocks, axis=self.axis)
+
+    def get_config(self):
+        return {"axis": self.axis, "splits": self.splits, "inner_init": self.inner_initializer}
+
+
+def get_initializer(init_name):
+    return {
+        'concat': ConcatInitializer('glorot_uniform', axis=3, splits=3),
+        'tile': TilingInitializer('glorot_uniform', axis=3, splits=3)
+    }[init_name]

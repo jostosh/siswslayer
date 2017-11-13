@@ -13,7 +13,7 @@ from numpy import prod, ones
 from tensorflow.contrib.keras.python.keras.layers import Layer
 from tensorflow.contrib.keras.python.keras import initializers
 from functools import reduce
-from identity_init import Identity, TilingInitializer
+from initializers import Identity, TilingInitializer
 
 
 def get_tensor_shape(t):
@@ -70,6 +70,7 @@ class _LocalWeightSharing(base.Layer):
                  centroids=3,
                  local_normalization=True,
                  centroids_trainable=True,
+                 gain=1.0,
                  per_filter=True,
                  padding='valid',
                  data_format='channels_last',
@@ -92,6 +93,7 @@ class _LocalWeightSharing(base.Layer):
         self.per_filter = per_filter
         self.local_normalization = local_normalization
         self.centroids_trainable = centroids_trainable
+        self.gain = gain
         self.kernel_size = utils.normalize_tuple(kernel_size, rank, 'kernel_size')
         self.strides = utils.normalize_tuple(strides, rank, 'strides')
         self.padding = utils.normalize_padding(padding)
@@ -156,10 +158,11 @@ class _LocalWeightSharing(base.Layer):
         self.distance_matrix = self.add_variable(
             name='distance_matrix',
             shape=distance_matrix_init_shape,
-            initializer=Identity(),
+            initializer=Identity(gain=self.gain),
             trainable=self.centroids_trainable,
             dtype=self.dtype
         )
+        print(self.gain, self.centroids_trainable, self.per_filter, self.kernel_initializer)
         self.built = True
 
     def call(self, inputs):
@@ -342,6 +345,7 @@ class LocalWeightSharing2D(_LocalWeightSharing, Layer):
                centroids_trainable=True,
                local_normalization=True,
                per_filter=True,
+               gain=1.0,
                padding='valid',
                data_format='channels_last',
                dilation_rate=(1, 1),
@@ -365,6 +369,7 @@ class LocalWeightSharing2D(_LocalWeightSharing, Layer):
         centroids=centroids,
         centroids_trainable=centroids_trainable,
         per_filter=per_filter,
+        gain=gain,
         local_normalization=local_normalization,
         kernel_size=kernel_size,
         strides=strides,

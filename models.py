@@ -5,6 +5,7 @@ from tensorflow.contrib.keras.python.keras.losses import categorical_crossentrop
 from tensorflow.contrib.keras.python.keras.optimizers import RMSprop, Adam, Nadam
 from config import Config
 import tensorflow as tf
+from initializers import get_initializer
 
 
 opt = {
@@ -78,14 +79,23 @@ class CNNSmall(CNN):
 class LWS1Small(CNNSmall):
     def second_block(self):
         self.add(Conv2D(filters=64, kernel_size=3, strides=(1, 1), activation=tf.nn.elu, padding='same'))
-        self.add(LocalWeightSharing2D(filters=64, kernel_size=3, strides=(1, 1), activation=tf.nn.elu, padding='same'))
+        self.add(LocalWeightSharing2D(
+            filters=64, kernel_size=3, strides=(1, 1), activation=tf.nn.elu, padding='same',
+            per_filter=Config.per_filter, gain=Config.gain, kernel_initializer=get_initializer(Config.init)
+        ))
         self.add(MaxPool2D(pool_size=(2, 2), strides=2))
 
 
 class LWS2Small(CNNSmall):
     def second_block(self):
-        self.add(LocalWeightSharing2D(filters=64, kernel_size=3, strides=(1, 1), activation=tf.nn.elu, padding='same'))
-        self.add(LocalWeightSharing2D(filters=64, kernel_size=3, strides=(1, 1), activation=tf.nn.elu, padding='same'))
+        self.add(LocalWeightSharing2D(
+            filters=64, kernel_size=3, strides=(1, 1), activation=tf.nn.elu, padding='same',
+            per_filter=Config.per_filter, gain=Config.gain, kernel_initializer=get_initializer(Config.init)
+        ))
+        self.add(LocalWeightSharing2D(
+            filters=64, kernel_size=3, strides=(1, 1), activation=tf.nn.elu, padding='same',
+            per_filter=Config.per_filter, gain=Config.gain, kernel_initializer=get_initializer(Config.init)
+        ))
         self.add(MaxPool2D(pool_size=(2, 2), strides=2))
 
 

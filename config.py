@@ -40,3 +40,8 @@ class Config(ConfigBase):
     kerosene_path = '/home/jos/datasets/kerosene'
     check_imports = False
     ensure_data = False
+    store = False
+    log_infix = ''
+    init = Parameter(default='tile', choices=['tile', 'concat'])
+    gain = 1.0
+    per_filter = True

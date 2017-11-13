@@ -32,12 +32,15 @@ def train():
             EstimateTimeRemaining(total_epochs=Config.epochs)
         ]
     )
+    if Config.store:
+        model.save(join(Config.log_dir, 'model.h5'))
 
 if __name__ == "__main__":
     Config.load()
     if Config.check_imports:
         print("Imports succeeded!")
         exit(0)
-    Config.log_dir = join(Config.log_base, Config.dataset, Config.model, 'fold{}'.format(Config.fold))
+    Config.log_dir = join(Config.log_base, Config.dataset, Config.model, Config.log_infix, 'fold{}'.format(Config.fold))
     makedirs(Config.log_dir, exist_ok=Config.exist_ok)
+    print("Logging at {}".format(Config.log_dir))
     train()
