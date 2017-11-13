@@ -8,7 +8,7 @@ def path_join(*args):
 
 
 class Config(ConfigBase):
-    dataset = Parameter(default='adience', choices=['adience', 'lfw', 'mnist', 'svhn', 'cifar10', 'cifar100', 'iris'])
+    dataset = Parameter(default='adience', choices=['adience', 'lfw', 'mnist', 'svhn', 'cifar10', 'cifar100', 'iris', 'fer2013'])
     data_path = path_join("datasets", "aligned")
     log_base = path_join("siswslayer", "logs")
     model = Parameter(

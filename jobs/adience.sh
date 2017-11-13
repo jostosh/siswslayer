@@ -14,4 +14,4 @@
 module load tensorflow
 source envs/lws/bin/activate
 
-srun python siswslayer/train_keras.py --dataset adience --kerosene_path /data/s2098407/kerosene $*
+srun python siswslayer/train_keras.py --dataset adience --data_path /data/s2098407/adience --kerosene_path /data/s2098407/kerosene $*

@@ -20,10 +20,10 @@ class DatasetBase(abc.ABC):
         self.preprocess()
 
         # Data augmentation
-        self.train_generator = self.train_generator()
+        self.train_gen = self.train_generator()
 
         # Validation generator
-        self.validation_generator = ImageDataGenerator(
+        self.validation_gen = ImageDataGenerator(
             rescale=self.determine_rescale()
         )
 
@@ -51,28 +51,22 @@ class DatasetBase(abc.ABC):
         )
 
     def determine_rescale(self):
-        if self.X_train[0].max() > 1.0:
+        if np.max(self.X_train[0]) > 1.0:
             return 1/255.0
 
     def ensure_channels_last(self):
-        if self.X_train.shape[1] in [1, 3, 4] and self.X_train.shape[-1] not in [1, 3, 4]:
+        if self.X_train.shape[1] in [1, 3, 4, 6] and self.X_train.shape[-1] not in [1, 3, 4, 6]:
             self.X_train = self.X_train.transpose((0, 2, 3, 1))
             self.X_test = self.X_test.transpose((0, 2, 3, 1))
 
     def ensure_resized(self):
         if Config.resize:
-            self.X_test = np.asarray(map(lambda im: imresize(im, Config.widhth, Config.height), self.X_test))
-            self.X_train = np.asarray(map(lambda im: imresize(im, (Config.width, Config.height)), self.X_train))
+            self.X_test = np.asarray(list(map(lambda im: imresize(im, (Config.width, Config.height)), self.X_test)))
+            self.X_train = np.asarray(list(map(lambda im: imresize(im, (Config.width, Config.height)), self.X_train)))
 
     def crop(self):
-        self.X_train = np.asarray(map(
-            lambda im: im[Config.cropy[0]:Config.cropy[1], Config.cropx[0]:Config.cropx[1]],
-            self.X_train
-        ))
-        self.X_test = np.asarray(map(
-            lambda im: im[Config.cropy[0]:Config.cropy[1], Config.cropx[0]:Config.cropx[1]],
-            self.X_test
-        ))
+        self.X_train = self.X_train[:, Config.cropy[0]:Config.cropy[1], Config.cropx[0]:Config.cropy[1], :]
+        self.X_test = self.X_test[:, Config.cropy[0]:Config.cropy[1], Config.cropx[0]:Config.cropy[1], :]
 
     @abc.abstractmethod
     def load_data(self) -> (h5py.File, h5py.Dataset, h5py.Dataset, h5py.Dataset, h5py.Dataset, h5py.Dataset):
@@ -92,10 +86,10 @@ class DatasetBase(abc.ABC):
 
     def generator(self, train=True):
         if train:
-            return self.train_generator.flow(
+            return self.train_gen.flow(
                 self.X_train, self.y_train, batch_size=Config.batch_size
             )
-        return self.validation_generator.flow(
+        return self.validation_gen.flow(
             self.X_test, self.y_test, batch_size=Config.batch_size, shuffle=False
         )
 
@@ -119,6 +113,20 @@ class Adience(DatasetBase):
     def load_data(self):
 
         self.h5f = h5py.File(Config.data_path + '/fold{}.hdf5'.format(Config.fold), 'r')
+
+        self.X_train = self.h5f['train/images']
+        self.y_train = self.h5f['train/labels']
+
+        self.X_test = self.h5f['test/images']
+        self.y_test = self.h5f['test/labels']
+
+        return self.h5f, self.X_train, self.y_train, self.X_test, self.y_test
+
+
+class Fer2013(DatasetBase):
+
+    def load_data(self):
+        self.h5f = h5py.File(Config.data_path + "/fer2013.h5", 'r')
 
         self.X_train = self.h5f['train/images']
         self.y_train = self.h5f['train/labels']
@@ -176,6 +184,16 @@ class LFW(DatasetBase):
         (X_train, y_train), (X_test, y_test) = DatasetBase.load_kerosene(partial(load_data, format='deepfunneled'))
         return None, X_train, y_train, X_test, y_test
 
+    def ensure_resized(self):
+        def resize_separate(im):
+            im0, im1 = im[:, :, :3], im[:, :, 3:]
+            return np.concatenate((
+                imresize(im0, (Config.width, Config.height), mode='RGB', interp='bicubic'),
+                imresize(im1, (Config.width, Config.height), mode='RGB', interp='bicubic')
+            ))
+        self.X_train = np.asarray([resize_separate(im) for im in self.X_train])
+        self.X_test = np.asarray([resize_separate(im) for im in self.X_test])
+
 
 class Cifar10(DatasetBase):
 
@@ -209,5 +227,6 @@ def get_dataset(name):
         'lfw': LFW,
         'cifar10': Cifar10,
         'iris': Iris,
-        'cifar100': Cifar100
+        'cifar100': Cifar100,
+        'fer2013': Fer2013
     }[name]()
