@@ -69,7 +69,9 @@ class TilingInitializer(Initializer):
 
 class ConcatInitializer(Initializer):
     """
-    Initializes a tiled tensor where we tile along a single axis
+    Initializes a concatenated tensor where we concatenate along a single axis. This is useful for local weight sharing
+    layers, where the kernels of a single kernel-centroid pair should be initialized as if they are the only kernel
+    being used at all.
     Args:
         inner_initializer: The initializer instance that initializes a single block
         axis: The axis to tile along
@@ -98,5 +100,6 @@ class ConcatInitializer(Initializer):
 def get_initializer(init_name):
     return {
         'concat': ConcatInitializer('glorot_uniform', axis=3, splits=3),
-        'tile': TilingInitializer('glorot_uniform', axis=3, splits=3)
+        'tile': TilingInitializer('glorot_uniform', axis=3, splits=3),
+        'glorot': 'glorot_uniform'
     }[init_name]

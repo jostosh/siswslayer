@@ -162,7 +162,6 @@ class _LocalWeightSharing(base.Layer):
             trainable=self.centroids_trainable,
             dtype=self.dtype
         )
-        print(self.gain, self.centroids_trainable, self.per_filter, self.kernel_initializer)
         self.built = True
 
     def call(self, inputs):

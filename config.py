@@ -42,6 +42,6 @@ class Config(ConfigBase):
     ensure_data = False
     store = False
     log_infix = ''
-    init = Parameter(default='tile', choices=['tile', 'concat'])
+    init = Parameter(default='tile', choices=['tile', 'concat', 'glorot'])
     gain = 1.0
     per_filter = True
