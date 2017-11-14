@@ -3,6 +3,7 @@ from tensorflow.python.ops import linalg_ops, array_ops
 from tensorflow.python.framework import dtypes
 from tensorflow.contrib.keras.python.keras import initializers
 from copy import deepcopy
+from config import Config
 
 
 class Identity(Initializer):
@@ -101,5 +102,6 @@ def get_initializer(init_name):
     return {
         'concat': ConcatInitializer('glorot_uniform', axis=3, splits=3),
         'tile': TilingInitializer('glorot_uniform', axis=3, splits=3),
-        'glorot': 'glorot_uniform'
+        'glorot': 'glorot_uniform',
+        'varscaling': initializers.VarianceScaling(scale=Config.init_scale, mode='fan_avg', distribution='uniform')
     }[init_name]
