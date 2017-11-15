@@ -1,5 +1,6 @@
 from lws import LocalWeightSharing2D
-from tensorflow.contrib.keras.python.keras.layers import Conv2D, Dense, Dropout, MaxPool2D, Flatten, LocallyConnected2D
+from tensorflow.contrib.keras.python.keras.layers import Conv2D, Dense, Dropout, MaxPool2D, Flatten,\
+    LocallyConnected2D, ZeroPadding2D
 from tensorflow.contrib.keras.python.keras.models import Sequential
 from tensorflow.contrib.keras.python.keras.losses import categorical_crossentropy
 from tensorflow.contrib.keras.python.keras.optimizers import RMSprop, Adam, Nadam
@@ -101,7 +102,9 @@ class LWS2Small(CNNSmall):
 
 class LCNN2Small(CNNSmall):
     def second_block(self):
+        self.add(ZeroPadding2D())
         self.add(LocallyConnected2D(filters=64, kernel_size=3, strides=(1, 1), activation=tf.nn.elu))
+        self.add(ZeroPadding2D())
         self.add(LocallyConnected2D(filters=64, kernel_size=3, strides=(1, 1), activation=tf.nn.elu))
         self.add(MaxPool2D(pool_size=(2, 2), strides=2))
 
@@ -109,6 +112,7 @@ class LCNN2Small(CNNSmall):
 class LCNN1Small(CNNSmall):
     def second_block(self):
         self.add(Conv2D(filters=64, kernel_size=3, strides=(1, 1), activation=tf.nn.elu, padding='same'))
+        self.add(ZeroPadding2D())
         self.add(LocallyConnected2D(filters=64, kernel_size=3, strides=(1, 1), activation=tf.nn.elu))
         self.add(MaxPool2D(pool_size=(2, 2), strides=2))
 
