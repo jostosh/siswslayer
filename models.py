@@ -193,6 +193,7 @@ model_dict = {
     'lcnn1s': LCNN1Small,
     'lcnn2s': LCNN2Small,
     'lws1s': LWS1Small,
+    'lw1s': LWS1Small,
     'lws2s': LWS2Small,
     'cnns': CNNSmall,
     'cnnm': CNNM,
