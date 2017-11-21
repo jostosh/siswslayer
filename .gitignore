@@ -24,7 +24,9 @@ var/
 .installed.cfg
 *.egg
 tensorboard/
+face_frontalization/dlib_models
 *.gz
+face_frontalization/frontalization_models
 kernel_images
 
 # PyInstaller

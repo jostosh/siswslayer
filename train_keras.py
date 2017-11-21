@@ -3,7 +3,7 @@ from os import makedirs
 from os.path import join
 
 import tensorflow as tf
-from tensorflow.contrib.keras.python.keras.callbacks import TerminateOnNaN, CSVLogger, ReduceLROnPlateau
+from tensorflow.contrib.keras.python.keras.callbacks import TerminateOnNaN, CSVLogger, LearningRateScheduler
 from callbacks import EstimateTimeRemaining
 
 from config import Config
@@ -28,7 +28,7 @@ def train():
         verbose=Config.verbose, workers=Config.workers, use_multiprocessing=True, callbacks=[
             CSVLogger(join(Config.log_dir, 'logs.csv')),
             TerminateOnNaN(),
-            ReduceLROnPlateau(patience=Config.patience),
+            LearningRateScheduler(lambda t: Config.lr * (Config.lr_decay ** t)),
             EstimateTimeRemaining(total_epochs=Config.epochs)
         ]
     )

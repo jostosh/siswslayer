@@ -16,6 +16,7 @@ class Config(ConfigBase):
     )
     optimizer = Parameter(default="adam", choices=['adam', 'rmsprop', 'nadam'])
     lr = 1e-4
+    lr_decay = 0.95
     log = 'test'
     fold = 0
     log_dir = None

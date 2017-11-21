@@ -4,6 +4,8 @@ import numpy as np
 import os
 import h5py
 from scipy import misc
+import matplotlib.pylab as plt
+from preprocessing.frontalizer import Frontalizer
 
 
 class AdienceConfig(ConfigBase):
@@ -11,6 +13,8 @@ class AdienceConfig(ConfigBase):
     width = 227
     height = 227
     folds = 5
+    frontal = False
+    show = False
 
 
 def load_fold(idx):
@@ -31,6 +35,12 @@ def load_fold(idx):
         if not os.path.exists(path):
             continue
 
+        img = misc.imread(path)
+        if frontalizer:
+            _, img = frontalizer.transform(img)
+        if AdienceConfig.show:
+            plt.imshow(img)
+            plt.show()
         images.append(misc.imresize(misc.imread(path), (AdienceConfig.width, AdienceConfig.height)))
         labels.append(np.asarray([1, 0], dtype='float') if gender == 'm' else np.asarray([0, 1], dtype='float'))
 
@@ -63,4 +73,5 @@ def preprocess():
 
 if __name__ == "__main__":
     AdienceConfig.load()
+    frontalizer = Frontalizer() if AdienceConfig.frontal else None
     preprocess()
