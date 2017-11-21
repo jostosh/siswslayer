@@ -127,7 +127,7 @@ class LWS1(CNN):
 class LWS2(LWS1):
 
     def second_block(self):
-        self.add(LocalWeightSharing2D(filters=256, kernel_size=5, activation=tf.nn.elu))
+        self.add(LocalWeightSharing2D(filters=256, kernel_size=5, activation=tf.nn.elu, per_filter=False))
         self.add(MaxPool2D(pool_size=(3, 3), strides=2))
 
 
